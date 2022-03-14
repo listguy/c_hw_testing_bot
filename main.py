@@ -1,8 +1,11 @@
 import os
 import filecmp
+import difflib
+import subprocess
 
 path = r"C:\Users\nitza\Documents\Programming\C\c-hw\HW4\hw4q2\tests"
 exe_path = r"C:\Users\nitza\Documents\Programming\C\c-hw\HW4\hw4q2\cmake-build-debug\hw4q2"
+diffmerge_exe_path = r"C:\Program Files\SourceGear\Common\DiffMerge\sgdm.exe"
 # read existing folders
 # create outputs folder
 # read inputs
@@ -40,3 +43,6 @@ for i,(exp, output) in enumerate(zip(expected, outs)):
     msg = "✅"
     if not result: msg = "❌"
     print(f"Test {i + 1}: {msg}")
+
+to_check = expected[1]
+subprocess.Popen([diffmerge_exe_path, f"-caption={to_check}", "-t1=Expected", "-t2=Received", f"{path}/expected/{to_check}", f"{path}/outs/{to_check}"])
