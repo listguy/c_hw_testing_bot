@@ -1,0 +1,1 @@
+{"hw4q1out1.txt": true, "hw4q1out2.txt": true, "hw4q1out3.txt": true, "hw4q1out4.txt": true, "hw4q1out5.txt": false, "hw4q1out6.txt": false, "hw4q1out7.txt": true, "hw4q1out8.txt": true, "hw4q1out9.txt": true}

@@ -2,6 +2,7 @@ import argparse
 from math import fabs
 import os
 import filecmp
+import json
 import subprocess
 from sys import path
 
@@ -15,6 +16,7 @@ SHOW_RESULTS = "results"
 # EXIT = "e"
 # legal_cmds = [RUN_TEST, OPEN_IN_DIFF, CONFIG, EXIT]
 CONFIG_FILE_NAME = "config.txt"
+RESULTS_FILE_NAME = "results.txt"
 
 my_parser = argparse.ArgumentParser(prog='hwbot', 
                                     description='Run tests on your HW and open results diffs easily', 
@@ -47,33 +49,50 @@ def handle_outs_folder(path):
     if not "outs" in folders:
         try:
             os.mkdir(path + "\outs")
-            print("'outs' folder successfully created.")
         except FileExistsError as err:
-            print(f"error in creating outs folder, exiting")
-            print(f"ERROR: \n{err}")
+            print_error(f"error in creating outs folder:\n{err}\nExiting...")
 
-def handle_config_file(cwd):
-    if os.path.isfile(f"{cwd}\{CONFIG_FILE_NAME}"): return
-    open(f"{cwd}\{CONFIG_FILE_NAME}", "x")
-    setup_config(cwd)
+def handle_config_file(path):
+    if os.path.isfile(path): return
+    open(path, "x")
+    setup_config(path)
     
-def setup_config(cwd):
-    project_path = get_dir_path_input("📂 Please type the full path to tests directory of your project: ")
-    exe_path = get_file_path_input("🔨 Please type the full path to your project exe file: ")
-    diffmerge_exe_path = get_file_path_input("▶ Please type the full path to diffmerge exe file")
+def setup_config(path):
+    # project_path = get_dir_path_input("📂 Please type the full path to tests directory of your project: ")
+    # exe_path = get_file_path_input("🔨 Please type the full path to your project exe file: ")
+    # diffmerge_exe_path = get_file_path_input("▶ Please type the full path to diffmerge exe file")
 
-    f = open(f"{cwd}\{CONFIG_FILE_NAME}", "w")
-    f.write(f"{project_path}\n{exe_path}\n{diffmerge_exe_path}")
+    config_data = {
+        "project_path": get_dir_path_input("📂 Please type the full path to tests directory of your project: "),
+        "exe_path": get_file_path_input("🔨 Please type the full path to your project exe file: "),
+        "diffmerge_exe_path": get_file_path_input("▶ Please type the full path to diffmerge exe file")
+    }
+    write_to_json_file(path, config_data)
+
+def create_results_file(path):
+    if os.path.isfile(path): return
+    open(path, "x")
+
+def read_json_file(path):
+    f = open(path)
+    try:
+        content = json.load(f)
+        f.close
+        return content
+    except json.JSONDecodeError:
+        pass
+    return None
+    
+
+def write_to_json_file(path, content):
+    f = open(path, "w")
+    json.dump(content, f)
     f.close()
 
-def read_config(path):
-    project_path, exe_path, diffmerge_path = read_file_by_lines(path)
-    return project_path, exe_path, diffmerge_path
-
-def read_file_by_lines(path):
-    with open(path) as file:
-        lines = [line.rstrip() for line in file]
-    return lines
+# def read_file_by_lines(path):
+#     with open(path) as file:
+#         lines = [line.rstrip() for line in file]
+#     return lines
 
 def get_dir_path_input(msg):
     while True:
@@ -103,49 +122,51 @@ def read_expected(path):
     return expected
 
 def run_tests(path, exe, ins, expected):
-    outs = []
+    results = {}
     for input in ins:
-        outs.append(input.replace('in', 'out'))
-        current = outs[-1]
+        current = input.replace('in', 'out')
+        results[current] = False
         os.system(f"{exe} < {path}/ins/{input} > {path}/outs./{current}")
     # check success rate
-    for i,(exp, output) in enumerate(zip(expected, outs)):
+    for i,(exp, output) in enumerate(zip(expected, results.keys())):
         result = filecmp.cmp(f"{path}/expected/{exp}", f"{path}/outs/{output}")
-        msg = "✅"
-        if not result: msg = "❌"
-        print(f"Test {i + 1}: {msg}")
-    return outs
+        results[output] = result
+    return results
 
-def get_command_from_user():
+def print_results(results):
+    for i,(test, result) in enumerate(results.items()):
+        msg = "✅" if result else "❌"
+        print(f"{test}: {msg}")
 
-    r_input = input("🤔 ").replace(" ","")
-    command = r_input[0]
-    file_number = r_input[1:]
-    if command not in legal_cmds:
-        raise ValueError(f"'{command}' command is not recognized")
-    if command != OPEN_IN_DIFF:
-        return command, ""        
-    if not file_number.isdigit():
-        raise ValueError(f"File number should be an integer. Received '{file_number}'")
-    return command, int(file_number) - 1
 
 def main():
-    
-    ins = []
-    expected = []
-    outs = []
     cwd = os.getcwd()
+    config_path = f"{cwd}\{CONFIG_FILE_NAME}"
+    results_path = f"{cwd}\{RESULTS_FILE_NAME}"
 
+    # create config file
     try:
         print("Looks like config file is missing. Let's create one quickly:")
-        handle_config_file(cwd)
+        handle_config_file(config_path)
         print("config file created successfully")
     except OSError as err:
         print_error(f"Encountered an error while creating config file: \n{err}\nExiting...")
-    
-    project_path, exe_path, diffmerge_path = read_config(f"{cwd}\{CONFIG_FILE_NAME}")
 
-    handle_outs_folder(project_path)
+    # create results file
+    try:
+        create_results_file(results_path)
+    except OSError as err:
+        print_error(f"Encountered an error while creating results file: \n{err}\nExiting...")
+    
+    config_data = read_json_file(config_path)
+    if not config_data:
+        print_error("Corrupted config data. Reconfiging:")
+        setup_config(config_path)
+        print("config file updated successfully")
+        config_data = read_json_file(config_path)
+        
+
+    handle_outs_folder(config_data["project_path"])
 
     args = my_parser.parse_args()
 
@@ -154,18 +175,25 @@ def main():
     test_indexes = args.test_indexes
 
     if(command == RUN_TEST):
-        ins = read_inputs(project_path)
-        expected = read_expected(project_path)
-        outs = run_tests(project_path, exe_path, ins, expected)
+        ins = read_inputs(config_data.get("project_path"))
+        expected = read_expected(config_data.get("project_path"))
+        results = run_tests(config_data.get("project_path"), config_data.get("exe_path"), ins, expected)
+        print_results(results)
+        if(soft_test): return
+        write_to_json_file(results_path, results)
 
     if(command == CONFIG):
-        setup_config(cwd)
+        setup_config(config_path)
         print("config file updated successfully")
         # project_path, exe_path, diffmerge_path = read_config(f"{cwd}\{CONFIG_FILE_NAME}")
         # handle_outs_folder(project_path)
 
     if(command == SHOW_RESULTS):
-        print("show results")
+        results = read_json_file(results_path)
+        if not results: 
+            print_error("No results to show")
+            return
+        print_results(results)
 
     if(command == OPEN_IN_DIFF):
         if  not test_indexes: 
