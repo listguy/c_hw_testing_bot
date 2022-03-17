@@ -1,27 +1,21 @@
 import argparse
-from math import fabs
 import os
 import filecmp
 import json
 import subprocess
 from sys import path
 
-# path = r"C:\Users\nitza\Documents\Programming\C\c-hw\HW4\hw4q2\tests"
-# exe_path = r"C:\Users\nitza\Documents\Programming\C\c-hw\HW4\hw4q2\cmake-build-debug\hw4q2"
-# diffmerge_exe_path = r"C:\Program Files\SourceGear\Common\DiffMerge\sgdm.exe"
 RUN_TEST = "test"
 OPEN_IN_DIFF = "diff"
 CONFIG = "config"
 SHOW_RESULTS = "results"
-# EXIT = "e"
-# legal_cmds = [RUN_TEST, OPEN_IN_DIFF, CONFIG, EXIT]
 CONFIG_FILE_NAME = "config.txt"
 RESULTS_FILE_NAME = "results.txt"
 
+# region Parser
 my_parser = argparse.ArgumentParser(prog='hwbot', 
                                     description='Run tests on your HW and open results diffs easily', 
                                     epilog='Enjoy 😎')
-
 
 my_parser.add_argument('command',
                         metavar='command',
@@ -29,16 +23,19 @@ my_parser.add_argument('command',
                         type=str, 
                         help='action to be executed')
 
-my_parser.add_argument('test_indexes',
+my_parser.add_argument('tests',
                         nargs='*',
-                        type=int,
-                        default=0,
-                        help='one or more indexes of tests to show diff for')
+                        type=str,
+                        default="",
+                        help='one or more file names of tests to show diff for')
 
 my_parser.add_argument('-s', '--soft', 
                         action='store_true', 
                         help='run test without overwriting last test results')
 
+# endregion
+
+# region helpers
 def handle_outs_folder(path):
     # read project dir content
     project_dir_content = os.listdir(path)
@@ -83,16 +80,10 @@ def read_json_file(path):
         pass
     return None
     
-
 def write_to_json_file(path, content):
     f = open(path, "w")
     json.dump(content, f)
     f.close()
-
-# def read_file_by_lines(path):
-#     with open(path) as file:
-#         lines = [line.rstrip() for line in file]
-#     return lines
 
 def get_dir_path_input(msg):
     while True:
@@ -137,7 +128,7 @@ def print_results(results):
     for i,(test, result) in enumerate(results.items()):
         msg = "✅" if result else "❌"
         print(f"{test}: {msg}")
-
+# endregion
 
 def main():
     cwd = os.getcwd()
@@ -172,7 +163,7 @@ def main():
 
     command = args.command
     soft_test = args.soft
-    test_indexes = args.test_indexes
+    files_to_diff = args.tests
 
     if(command == RUN_TEST):
         ins = read_inputs(config_data.get("project_path"))
@@ -185,8 +176,6 @@ def main():
     if(command == CONFIG):
         setup_config(config_path)
         print("config file updated successfully")
-        # project_path, exe_path, diffmerge_path = read_config(f"{cwd}\{CONFIG_FILE_NAME}")
-        # handle_outs_folder(project_path)
 
     if(command == SHOW_RESULTS):
         results = read_json_file(results_path)
@@ -196,47 +185,15 @@ def main():
         print_results(results)
 
     if(command == OPEN_IN_DIFF):
-        if  not test_indexes: 
+        if  not files_to_diff: 
             print_error("No indexes provided.")
             return
-        for index in test_indexes:
-            print(index)
-            # try:
-            #     test_name = outs[index]
-            # except IndexError:
-            #     print_error(f"Couldn't show diff, no test with index '{index + 1}'")
-            # subprocess.Popen([diffmerge_path, f"-caption={test_name}", "-t1=Expected", "-t2=Received", f"{project_path}/expected/{test_name}", f"{project_path}/outs/{test_name}"])
+        diff_exe = config_data.get("diffmerge_exe_path")
+        if not diff_exe: print_error("diffmerge exe path missing. try re-configing. Exiting...")
+        project_path = config_data.get("project_path")
+        if not project_path: print_error("project path missing. try re-configing. Exiting...")
+        for file in files_to_diff:
+            subprocess.Popen([diff_exe, f"-caption={file}", "-t1=Expected", "-t2=Received", f"{project_path}/expected/{file}", f"{project_path}/outs/{file}"])
     
-    # while(True):
-        
-    #     try:
-    #         action, test_to_check = get_command_from_user()
-    #     except ValueError as err:
-    #         print_error(err)
-    #         continue
-        
-    #     if(action is EXIT):
-    #         break
-
-    #     if(action is RUN_TEST):
-    #         ins = read_inputs(project_path)
-    #         expected = read_expected(project_path)
-    #         outs = run_tests(project_path, exe_path, ins, expected)
-    #         continue
-
-    #     if(action is CONFIG):
-    #         setup_config(cwd)
-    #         project_path, exe_path, diffmerge_path = read_config(f"{cwd}\{CONFIG_FILE_NAME}")
-    #         handle_outs_folder(project_path)
-
-
-    #     if(action is OPEN_IN_DIFF):
-    #         try:
-    #             test_name = outs[test_to_check]
-    #         except IndexError:
-    #             print(f"Couldn't show diff, no test with index '{test_to_check + 1}'")
-    #             continue
-    #         subprocess.Popen([diffmerge_path, f"-caption={test_name}", "-t1=Expected", "-t2=Received", f"{project_path}/expected/{test_name}", f"{project_path}/outs/{test_name}"])
-
 if __name__ == "__main__":
     main()
