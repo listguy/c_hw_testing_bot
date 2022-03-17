@@ -1,3 +1,5 @@
+import argparse
+from math import fabs
 import os
 import filecmp
 import subprocess
@@ -6,12 +8,34 @@ from sys import path
 # path = r"C:\Users\nitza\Documents\Programming\C\c-hw\HW4\hw4q2\tests"
 # exe_path = r"C:\Users\nitza\Documents\Programming\C\c-hw\HW4\hw4q2\cmake-build-debug\hw4q2"
 # diffmerge_exe_path = r"C:\Program Files\SourceGear\Common\DiffMerge\sgdm.exe"
-RUN_TEST = "r"
-OPEN_IN_DIFF = "d"
-CONFIG = "c"
-EXIT = "e"
-legal_cmds = [RUN_TEST, OPEN_IN_DIFF, CONFIG, EXIT]
+RUN_TEST = "test"
+OPEN_IN_DIFF = "diff"
+CONFIG = "config"
+SHOW_RESULTS = "results"
+# EXIT = "e"
+# legal_cmds = [RUN_TEST, OPEN_IN_DIFF, CONFIG, EXIT]
 CONFIG_FILE_NAME = "config.txt"
+
+my_parser = argparse.ArgumentParser(prog='hwbot', 
+                                    description='Run tests on your HW and open results diffs easily', 
+                                    epilog='Enjoy 😎')
+
+
+my_parser.add_argument('command',
+                        metavar='command',
+                        choices=['test', 'diff', 'results', 'config'], 
+                        type=str, 
+                        help='action to be executed')
+
+my_parser.add_argument('test_indexes',
+                        nargs='*',
+                        type=int,
+                        default=0,
+                        help='one or more indexes of tests to show diff for')
+
+my_parser.add_argument('-s', '--soft', 
+                        action='store_true', 
+                        help='run test without overwriting last test results')
 
 def handle_outs_folder(path):
     # read project dir content
@@ -27,8 +51,6 @@ def handle_outs_folder(path):
         except FileExistsError as err:
             print(f"error in creating outs folder, exiting")
             print(f"ERROR: \n{err}")
-    else:
-        print("'outs' folder already exists, skipped creation")
 
 def handle_config_file(cwd):
     if os.path.isfile(f"{cwd}\{CONFIG_FILE_NAME}"): return
@@ -43,7 +65,6 @@ def setup_config(cwd):
     f = open(f"{cwd}\{CONFIG_FILE_NAME}", "w")
     f.write(f"{project_path}\n{exe_path}\n{diffmerge_exe_path}")
     f.close()
-    print("config file created successfully")
 
 def read_config(path):
     project_path, exe_path, diffmerge_path = read_file_by_lines(path)
@@ -116,7 +137,9 @@ def main():
     cwd = os.getcwd()
 
     try:
+        print("Looks like config file is missing. Let's create one quickly:")
         handle_config_file(cwd)
+        print("config file created successfully")
     except OSError as err:
         print_error(f"Encountered an error while creating config file: \n{err}\nExiting...")
     
@@ -124,37 +147,68 @@ def main():
 
     handle_outs_folder(project_path)
 
-    print("Hello and welcome to C-HW bot. Use the command line to operate this tool.")
-    while(True):
+    args = my_parser.parse_args()
+
+    command = args.command
+    soft_test = args.soft
+    test_indexes = args.test_indexes
+
+    if(command == RUN_TEST):
+        ins = read_inputs(project_path)
+        expected = read_expected(project_path)
+        outs = run_tests(project_path, exe_path, ins, expected)
+
+    if(command == CONFIG):
+        setup_config(cwd)
+        print("config file updated successfully")
+        # project_path, exe_path, diffmerge_path = read_config(f"{cwd}\{CONFIG_FILE_NAME}")
+        # handle_outs_folder(project_path)
+
+    if(command == SHOW_RESULTS):
+        print("show results")
+
+    if(command == OPEN_IN_DIFF):
+        if  not test_indexes: 
+            print_error("No indexes provided.")
+            return
+        for index in test_indexes:
+            print(index)
+            # try:
+            #     test_name = outs[index]
+            # except IndexError:
+            #     print_error(f"Couldn't show diff, no test with index '{index + 1}'")
+            # subprocess.Popen([diffmerge_path, f"-caption={test_name}", "-t1=Expected", "-t2=Received", f"{project_path}/expected/{test_name}", f"{project_path}/outs/{test_name}"])
+    
+    # while(True):
         
-        try:
-            action, test_to_check = get_command_from_user()
-        except ValueError as err:
-            print_error(err)
-            continue
+    #     try:
+    #         action, test_to_check = get_command_from_user()
+    #     except ValueError as err:
+    #         print_error(err)
+    #         continue
         
-        if(action is EXIT):
-            break
+    #     if(action is EXIT):
+    #         break
 
-        if(action is RUN_TEST):
-            ins = read_inputs(project_path)
-            expected = read_expected(project_path)
-            outs = run_tests(project_path, exe_path, ins, expected)
-            continue
+    #     if(action is RUN_TEST):
+    #         ins = read_inputs(project_path)
+    #         expected = read_expected(project_path)
+    #         outs = run_tests(project_path, exe_path, ins, expected)
+    #         continue
 
-        if(action is CONFIG):
-            setup_config(cwd)
-            project_path, exe_path, diffmerge_path = read_config(f"{cwd}\{CONFIG_FILE_NAME}")
-            handle_outs_folder(project_path)
+    #     if(action is CONFIG):
+    #         setup_config(cwd)
+    #         project_path, exe_path, diffmerge_path = read_config(f"{cwd}\{CONFIG_FILE_NAME}")
+    #         handle_outs_folder(project_path)
 
 
-        if(action is OPEN_IN_DIFF):
-            try:
-                test_name = outs[test_to_check]
-            except IndexError:
-                print(f"Couldn't show diff, no test with index '{test_to_check + 1}'")
-                continue
-            subprocess.Popen([diffmerge_path, f"-caption={test_name}", "-t1=Expected", "-t2=Received", f"{project_path}/expected/{test_name}", f"{project_path}/outs/{test_name}"])
+    #     if(action is OPEN_IN_DIFF):
+    #         try:
+    #             test_name = outs[test_to_check]
+    #         except IndexError:
+    #             print(f"Couldn't show diff, no test with index '{test_to_check + 1}'")
+    #             continue
+    #         subprocess.Popen([diffmerge_path, f"-caption={test_name}", "-t1=Expected", "-t2=Received", f"{project_path}/expected/{test_name}", f"{project_path}/outs/{test_name}"])
 
 if __name__ == "__main__":
     main()
