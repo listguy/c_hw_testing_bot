@@ -62,7 +62,7 @@ def setup_config(path):
     config_data = {
         "project_path": get_dir_path_input("📂 Please type the full path to tests directory of your project: "),
         "exe_path": get_file_path_input("🔨 Please type the full path to your project exe file: "),
-        "diffmerge_exe_path": get_file_path_input("▶ Please type the full path to diffmerge exe file")
+        "diffmerge_exe_path": get_file_path_input("▶  Please type the full path to diffmerge exe file: ")
     }
     write_to_json_file(path, config_data)
 
@@ -117,9 +117,9 @@ def run_tests(path, exe, ins, expected):
     for input in ins:
         current = input.replace('in', 'out')
         results[current] = False
-        os.system(f"{exe} < {path}/ins/{input} > {path}/outs./{current}")
+        os.system(f"{exe} < {path}/ins/{input} > {path}/outs/{current}")
     # check success rate
-    for i,(exp, output) in enumerate(zip(expected, results.keys())):
+    for exp, output in zip(expected, results.keys()):
         result = filecmp.cmp(f"{path}/expected/{exp}", f"{path}/outs/{output}")
         results[output] = result
     return results
