@@ -37,8 +37,64 @@ Illustration:
 
 ## Usage
 
-- explain how to run tests
-- explain on soft tests
-- explain how to print results
-- explain how to show diffs
-- explain how to reconfig another project
+### Test
+
+Use command `test` to run all tests on the configured project. Results will be printed at the end.
+
+**Soft Tests:** Tests' results are saved automatically, overwriting the last results. To run tests without overwriting add the `-s` flag.
+
+Example:
+
+```
+python main.py test
+```
+
+Example with `-s` flag:
+
+```
+python main.py test -s
+```
+
+### See Results
+
+Use command `results` to print last tests' results.
+
+Example:
+
+```
+python main.py results
+```
+
+### Show diffs
+
+Use command `diff` to open diffs in [DiffMerge](https://sourcegear.com/diffmerge/) for certain tests.
+
+Provide tests' output file names, separated by comma, for every test you want to diff. You can use `results` for help.
+
+Example (for 3 tests):
+
+```
+python main.py diff out1.txt out2.txt out3.txt
+```
+
+### Reconfiguration
+
+Use command `config` to run the configuration prompt again.
+
+Useful if you've changed the project path or you want to test another project
+
+Example
+
+```
+python main.py config
+```
+
+### Help
+
+Use the `-h` flag to print help message in console
+
+Example
+
+```
+python main.py -h
+```
