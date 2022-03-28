@@ -24,7 +24,8 @@ Illustration:
 
 - Download repo code to your machine
 - Open it in your favorite terminal
-- run: `python main.py config`.
+- (optional) run: `where sgdm`. It will output DiffMerge path on your computer, you'll need it in the next step.
+- run: `python main.py config`
 
 ```
     # You will see these 3 prompts:
